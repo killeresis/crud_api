@@ -2,11 +2,16 @@ const express = require('express');
 const app = express();
 const PORT = 3000;
 
-// The Hello World endpoint
 app.get('/', (req, res) => {
-    res.send('Hello, server is running!');
+    res.json({ 
+        name: "Task API", 
+        version: "1.0", 
+        endpoints: ["/tasks"] 
+    });
 });
-
+app.get('/health', (req, res) => {
+    res.json({ status: "ok" });
+});
 // Start listening
 app.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);
