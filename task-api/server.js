@@ -4,6 +4,11 @@ const PORT = 3000;
 
 // Middleware to parse JSON bodies, for express to read json data from the client 
 app.use(express.json());
+const swaggerUi = require('swagger-ui-express');
+const swaggerDocument = require('./openapi.json');
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+
 
 //database 
 const tasks = [
@@ -118,5 +123,7 @@ app.delete('/tasks/:id', (req, res) => {
 
 // Start listening
 app.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
+    console.log(`Server is running!`);
+    console.log(`-> API Root: http://localhost:${PORT}/`);
+    console.log(`-> Swagger UI: http://localhost:${PORT}/docs`);
 });
