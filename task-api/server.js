@@ -71,6 +71,50 @@ app.post('/tasks', (req, res) => {
     // 5. Return 201 Created and send the newly created task back
     res.status(201).json(newTask);
 });
+//stage 4 
+// Update an existing task
+app.put('/tasks/:id', (req, res) => {
+    const requestedId = parseInt(req.params.id);
+    const task = tasks.find(t => t.id === requestedId);
+
+    // 1. Check if task exists
+    if (!task) {
+        return res.status(404).json({ error: `Task ${requestedId} not found` });
+    }
+
+    const { title, done } = req.body;
+
+    // 2. Validate input (must have a body, title cannot be empty if provided)
+    if (Object.keys(req.body).length === 0) {
+        return res.status(400).json({ error: "Request body cannot be empty" });
+    }
+    if (title !== undefined && title.trim() === '') {
+        return res.status(400).json({ error: "Title cannot be empty" });
+    }
+
+    // 3. Mutate the state (Update fields)
+    if (title !== undefined) task.title = title;
+    if (done !== undefined) task.done = done;
+
+    // 4. Return the updated task with a 200 OK
+    res.json(task);
+});
+//delete a task
+app.delete('/tasks/:id', (req, res) => {
+    const requestedId = parseInt(req.params.id);
+    const taskIndex = tasks.findIndex(t => t.id === requestedId);
+
+    // 1. Check if task exists
+    if (taskIndex === -1) {
+        return res.status(404).json({ error: `Task ${requestedId} not found` });
+    }
+
+    // 2. Remove the task from the array
+    tasks.splice(taskIndex, 1);
+
+    // 3. Return 204 No Content (Successful, but no data to send back)
+    res.status(204).send();
+});
 
 // Start listening
 app.listen(PORT, () => {
