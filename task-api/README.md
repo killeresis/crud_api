@@ -1,23 +1,16 @@
-# Task API
-A simple, in-memory CRUD API for managing tasks.
+# FlyRank Task API (SQLite Migration)
 
-## How to Run
-1. Ensure you have [Node.js](https://nodejs.org/) installed.
-2. Clone this repository.
-3. Install dependencies: `npm install`
-4. Start the server: `node server.js`
-5. The API will be available at `http://localhost:3000`.
+## Overview
+A backend REST API for a task management application. In this iteration, the core CRUD (Create, Read, Update, Delete) operations have been migrated from temporary in-memory storage to a persistent SQLite database.
 
-## Endpoints
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | / | API information |
-| GET | /health | Server health check |
-| GET | /tasks | List all tasks |
-| GET | /tasks/:id | Get a specific task |
-| POST | /tasks | Create a new task |
-| PUT | /tasks/:id | Update a task |
-| DELETE | /tasks/:id | Remove a task |
+## Tech Stack
+* **Runtime:** Node.js
+* **Framework:** Express.js
+* **Database:** SQLite3 (`better-sqlite3`)
 
-## Example Request
-`curl -i http://localhost:3000/`
+## Setup Instructions
+1. Clone the repository to your local machine.
+2. Open your terminal and navigate to the project directory.
+3. Install the required dependencies:
+   ```bash
+   npm install
