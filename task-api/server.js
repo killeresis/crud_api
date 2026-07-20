@@ -98,21 +98,38 @@ app.post('/tasks', (req, res) => {
     };
     res.status(201).json(newTask);
 });
-//stage 4 
 // Update an existing task
 app.put('/tasks/:id', (req, res) => {
-    // 1. Prepare the SQL statement
-    const statement = db.prepare('UPDATE tasks SET title = ?, description = ?, status = ? WHERE id = ?');
-    
-    // 2. Run it with values from the body, and the ID from the URL parameters
-    const info = statement.run(req.body.title, req.body.description, req.body.status, req.params.id);
-    
-    // 3. 'info.changes' tells us how many rows were updated. If it's 0, the ID didn't exist!
-    if (info.changes === 0) {
+    const requestedId = parseInt(req.params.id);
+    const { title, done } = req.body;
+
+    // 1. Validate input (same rules as Assignment 1)
+    if (Object.keys(req.body).length === 0) {
+        return res.status(400).json({ error: "Request body cannot be empty" });
+    }
+    if (title !== undefined && title.trim() === '') {
+        return res.status(400).json({ error: "Title cannot be empty" });
+    }
+
+    // 2. Load the existing row first (needed for partial updates + 404)
+    const existing = db.prepare('SELECT * FROM tasks WHERE id = ?').get(requestedId);
+    if (!existing) {
         return res.status(404).json({ error: "Task not found" });
     }
-    
-    res.json({ message: "Task successfully updated" });
+
+    const newTitle = title !== undefined ? title : existing.title;
+    const newDone = done !== undefined ? (done ? 1 : 0) : existing.done;
+
+    // 3. Update with parameterized query
+    db.prepare('UPDATE tasks SET title = ?, done = ? WHERE id = ?')
+      .run(newTitle, newDone, requestedId);
+
+    // 4. Return the updated task
+    res.json({
+        id: requestedId,
+        title: newTitle,
+        done: Boolean(newDone)
+    });
 });
 
 //delete a task
