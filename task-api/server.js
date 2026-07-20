@@ -78,19 +78,25 @@ app.get('/tasks/:id', (req, res) => {
 //stage 3 
 
 // Create a new task
-// stage 2 (or 3, depending on your assignment rubric!)
 app.post('/tasks', (req, res) => {
-    // 1. Prepare the SQL statement with placeholders
-    const statement = db.prepare('INSERT INTO tasks (title, description, status) VALUES (?, ?, ?)');
+    const { title } = req.body;
 
-    // 2. Run the statement with the actual values from req.body
-    const info = statement.run(req.body.title, req.body.description, req.body.status || 'pending');
+    // 1. Validate — missing/empty title still returns 400 (same as Assignment 1)
+    if (!title || title.trim() === '') {
+        return res.status(400).json({ error: "Title is required and cannot be empty" });
+    }
 
-    // 3. Send a success response back to the client with the newly created task's ID
-    res.status(201).json({ 
-        message: "Task successfully created",
-        id: info.lastInsertRowid 
-    });
+    // 2. Insert with parameterized query; DB assigns id; done defaults to false (0)
+    const statement = db.prepare('INSERT INTO tasks (title, done) VALUES (?, ?)');
+    const info = statement.run(title, 0);
+
+    // 3. Return 201 with the full new task (including the id the database gave it)
+    const newTask = {
+        id: Number(info.lastInsertRowid),
+        title: title,
+        done: false
+    };
+    res.status(201).json(newTask);
 });
 //stage 4 
 // Update an existing task
