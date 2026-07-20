@@ -132,21 +132,17 @@ app.put('/tasks/:id', (req, res) => {
     });
 });
 
-//delete a task
 // Delete a task
 app.delete('/tasks/:id', (req, res) => {
-    // 1. Prepare the SQL statement
     const statement = db.prepare('DELETE FROM tasks WHERE id = ?');
-    
-    // 2. Run it using just the ID
     const info = statement.run(req.params.id);
-    
-    // 3. Check if anything was actually deleted
+
     if (info.changes === 0) {
         return res.status(404).json({ error: "Task not found" });
     }
-    
-    res.json({ message: "Task successfully deleted" });
+
+    // 204 No Content — success with an empty body (same as Assignment 1)
+    res.status(204).send();
 });
 
   
