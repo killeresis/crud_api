@@ -40,11 +40,11 @@ if (rowCount.count === 0) {
 }
 //stage 1 
 app.get('/', (req, res) => {
-    res.json({ 
-        name: "Task API", 
-        version: "1.0", 
-        endpoints: ["/tasks"] 
-    });
+  const statement = db.prepare('SELECT * FROM tasks');
+  const tasks = statement.all();
+  
+  // Send the result back as JSON
+  res.json(tasks);
 });
 app.get('/health', (req, res) => {
     res.json({ status: "ok" });
@@ -52,17 +52,22 @@ app.get('/health', (req, res) => {
 
 //stage 2 
 app.get('/tasks', (req, res) => {
+    const statement = db.prepare('SELECT * FROM tasks');
+  const tasks = statement.all();
+  
     res.json(tasks);
 });
 app.get('/tasks/:id', (req, res) => {
-    // The ':id' in the URL is a parameter. We extract it and parse it as an integer.
+    // Extract and parse the ID
     const requestedId = parseInt(req.params.id);
     
-    // Search our array for a task that matches the ID
-    const task = tasks.find(t => t.id === requestedId);
+    // Replace the old array search with a database query!
+    // We use '?' to securely pass the ID and prevent SQL injection
+    const statement = db.prepare('SELECT * FROM tasks WHERE id = ?');
+    const task = statement.get(requestedId);
 
     if (task) {
-        // If found, return it
+        // If found in the database, return it
         res.json(task);
     } else {
         // If not found, return a strict 404 status code with an error message
