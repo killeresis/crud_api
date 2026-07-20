@@ -95,47 +95,38 @@ app.post('/tasks', (req, res) => {
 //stage 4 
 // Update an existing task
 app.put('/tasks/:id', (req, res) => {
-    const requestedId = parseInt(req.params.id);
-    const task = tasks.find(t => t.id === requestedId);
-
-    // 1. Check if task exists
-    if (!task) {
-        return res.status(404).json({ error: `Task ${requestedId} not found` });
+    // 1. Prepare the SQL statement
+    const statement = db.prepare('UPDATE tasks SET title = ?, description = ?, status = ? WHERE id = ?');
+    
+    // 2. Run it with values from the body, and the ID from the URL parameters
+    const info = statement.run(req.body.title, req.body.description, req.body.status, req.params.id);
+    
+    // 3. 'info.changes' tells us how many rows were updated. If it's 0, the ID didn't exist!
+    if (info.changes === 0) {
+        return res.status(404).json({ error: "Task not found" });
     }
-
-    const { title, done } = req.body;
-
-    // 2. Validate input (must have a body, title cannot be empty if provided)
-    if (Object.keys(req.body).length === 0) {
-        return res.status(400).json({ error: "Request body cannot be empty" });
-    }
-    if (title !== undefined && title.trim() === '') {
-        return res.status(400).json({ error: "Title cannot be empty" });
-    }
-
-    // 3. Mutate the state (Update fields)
-    if (title !== undefined) task.title = title;
-    if (done !== undefined) task.done = done;
-
-    // 4. Return the updated task with a 200 OK
-    res.json(task);
+    
+    res.json({ message: "Task successfully updated" });
 });
+
 //delete a task
+// Delete a task
 app.delete('/tasks/:id', (req, res) => {
-    const requestedId = parseInt(req.params.id);
-    const taskIndex = tasks.findIndex(t => t.id === requestedId);
-
-    // 1. Check if task exists
-    if (taskIndex === -1) {
-        return res.status(404).json({ error: `Task ${requestedId} not found` });
+    // 1. Prepare the SQL statement
+    const statement = db.prepare('DELETE FROM tasks WHERE id = ?');
+    
+    // 2. Run it using just the ID
+    const info = statement.run(req.params.id);
+    
+    // 3. Check if anything was actually deleted
+    if (info.changes === 0) {
+        return res.status(404).json({ error: "Task not found" });
     }
-
-    // 2. Remove the task from the array
-    tasks.splice(taskIndex, 1);
-
-    // 3. Return 204 No Content (Successful, but no data to send back)
-    res.status(204).send();
+    
+    res.json({ message: "Task successfully deleted" });
 });
+
+  
 
 // Start listening
 app.listen(PORT, () => {
