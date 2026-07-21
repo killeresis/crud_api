@@ -10,13 +10,29 @@ SQLite is a single file on disk with zero setup: no separate database server to 
 * **Runtime:** Node.js
 * **Framework:** Express.js
 * **Database (A2):** SQLite (`better-sqlite3`)
-* **Database (A3 Stage 0):** PostgreSQL in Docker
+* **Database (A3):** PostgreSQL in Docker (`pg` + Docker Compose)
 
 ## Where the database lives
 * **A2:** File `task-api/tasks.db` (git-ignored; created on first run)
-* **A3 Stage 0:** Postgres container `taskdb` on `localhost:5432`, data in Docker volume `taskdata`
+* **A3:** Postgres service `db` in Docker Compose; data in named volume `taskdata`
 
-## Run Postgres in Docker (A3 Stage 0)
+## Run the whole stack (A3 Stage 4) — one command
+From the `task-api` folder, with Docker Desktop running:
+
+```bash
+docker compose up --build
+```
+
+This starts:
+* **api** — your Express app on http://localhost:3000
+* **db** — Postgres on port 5432 (reachable from the app as host `db`)
+
+Copy `.env.example` to `.env` for local (non-compose) runs. Inside Compose, `DATABASE_URL` is set in `compose.yaml` and points at `db`, not `localhost`.
+
+Stop everything: `docker compose down`  
+Data survives `down`/`up` because of the `taskdata` volume.
+
+## Run Postgres alone (A3 Stage 0)
 With Docker Desktop running:
 
 ```bash
@@ -34,7 +50,9 @@ docker exec -it taskdb psql -U postgres -d tasks
 
 Inside `psql`, `\dt` lists tables (none yet in Stage 0), then `\q` to quit.
 
-## Run the API (A2 — SQLite)
+**Note:** stop `taskdb` before `docker compose up` so port 5432 is free (`docker stop taskdb`).
+
+## Run the API locally against SQLite (A2)
 From the `task-api` folder:
 
 ```bash
