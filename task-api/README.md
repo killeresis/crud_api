@@ -1,88 +1,101 @@
-# FlyRank Task API (SQLite → Postgres)
+# FlyRank Task API (Containerized Postgres)
 
-## Overview
-A backend REST API for managing tasks. Storage moved from an in-memory array (A1) to SQLite (A2), and now toward a containerized PostgreSQL database (A3). Endpoints and response shapes stay the same — only the storage layer changes.
+## What this is
+A REST CRUD API for tasks. Storage evolved across three assignments:
 
-## Why SQLite? (A2)
-SQLite is a single file on disk with zero setup: no separate database server to install or run. Opening `tasks.db` creates the file if it is missing. That makes it a good fit for local work — data persists across restarts, and anyone who clones the repo gets a working database on first run without extra config.
+| Assignment | Storage |
+|---|---|
+| A1 | In-memory array |
+| A2 | SQLite file (`tasks.db`) |
+| A3 (this) | PostgreSQL in Docker |
 
-## Tech Stack
-* **Runtime:** Node.js
-* **Framework:** Express.js
-* **Database (A2):** SQLite (`better-sqlite3`)
-* **Database (A3):** PostgreSQL in Docker (`pg` + Docker Compose)
+Endpoints and response shapes stay the same — only the storage layer changed.
 
-## Where the database lives
-* **A2:** File `task-api/tasks.db` (git-ignored; created on first run)
-* **A3:** Postgres service `db` in Docker Compose; data in named volume `taskdata`
+## Tech stack
+* **Runtime:** Node.js + Express
+* **Database:** PostgreSQL 16 (`pg` driver)
+* **Containers:** Docker + Docker Compose
 
-## Run the whole stack (A3 Stage 4) — one command
+## One command to run everything
 From the `task-api` folder, with Docker Desktop running:
 
 ```bash
+cp .env.example .env
 docker compose up --build
-```
-
-This starts:
-* **api** — your Express app on http://localhost:3000
-* **db** — Postgres on port 5432 (reachable from the app as host `db`)
-
-Copy `.env.example` to `.env` for local (non-compose) runs. Inside Compose, `DATABASE_URL` is set in `compose.yaml` and points at `db`, not `localhost`.
-
-Stop everything: `docker compose down`  
-Data survives `down`/`up` because of the `taskdata` volume.
-
-## Run Postgres alone (A3 Stage 0)
-With Docker Desktop running:
-
-```bash
-docker run --name taskdb -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=tasks -p 5432:5432 -v taskdata:/var/lib/postgresql/data -d postgres:16
-```
-
-(`postgres:16` is used so the volume path in the assignment works; newer `postgres:latest` changed how data directories are laid out.)
-
-Check it:
-
-```bash
-docker ps
-docker exec -it taskdb psql -U postgres -d tasks
-```
-
-Inside `psql`, `\dt` lists tables (none yet in Stage 0), then `\q` to quit.
-
-**Note:** stop `taskdb` before `docker compose up` so port 5432 is free (`docker stop taskdb`).
-
-## Run the API locally against SQLite (A2)
-From the `task-api` folder:
-
-```bash
-npm install
-node server.js
 ```
 
 Then open:
 * API: http://localhost:3000/tasks
 * Docs: http://localhost:3000/docs
 
+Stop: `docker compose down`  
+Data survives restarts via the `taskdata` volume.
+
+## Environment variables
+Copy `.env.example` → `.env` (`.env` is git-ignored — never commit real secrets).
+
+| Variable | Example | Notes |
+|---|---|---|
+| `DATABASE_URL` | `postgres://postgres:dev@localhost:5432/tasks` | For running the API **on your machine** against a local Postgres |
+| (Compose) | set in `compose.yaml` as `postgres://postgres:dev@db:5432/tasks` | Inside Docker the host is the service name **`db`**, not `localhost` |
+
 ## Endpoints
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/tasks` | List all tasks |
-| GET | `/tasks/:id` | Get one task (404 if missing) |
-| POST | `/tasks` | Create a task (`title` required) → 201 |
-| PUT | `/tasks/:id` | Update title and/or done |
-| DELETE | `/tasks/:id` | Delete a task → 204 |
+| Method | Path | Description | Success |
+|---|---|---|---|
+| GET | `/tasks` | List all tasks | 200 |
+| GET | `/tasks/:id` | Get one task | 200 / 404 |
+| POST | `/tasks` | Create a task (`title` required) | 201 / 400 |
+| PUT | `/tasks/:id` | Update `title` and/or `done` | 200 / 400 / 404 |
+| DELETE | `/tasks/:id` | Delete a task | 204 / 404 |
 
-## Example SQL (A2 Stage 4)
-Run in DB Browser for SQLite → Execute SQL:
+## Example `curl -i`
+```text
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Content-Type: application/json; charset=utf-8
+Content-Length: 207
+Date: Tue, 21 Jul 2026 11:18:41 GMT
+Connection: keep-alive
 
-```sql
-SELECT * FROM tasks WHERE done = 1;
+[{"id":1,"title":"Set up the server","done":true},{"id":2,"title":"Build read endpoints","done":false},{"id":3,"title":"Ship to GitHub","done":false},{"id":4,"title":"Compose persistence test","done":false}]
 ```
 
-This returns only completed tasks (`done = 1`). After changing rows in DB Browser, `GET /tasks` shows the same data — API and DB Browser share one file.
+Command used:
 
-## DB Browser screenshot
-The `tasks` table in DB Browser for SQLite (three seeded rows after a fresh start):
+```bash
+curl -i http://localhost:3000/tasks
+```
 
-![tasks.db in DB Browser](docs/db-browser-screenshot.png)
+## Data in Postgres (`psql`)
+```text
+\dt
+         List of relations
+ Schema | Name  | Type  |  Owner
+--------+-------+-------+----------
+ public | tasks | table | postgres
+
+SELECT * FROM tasks;
+ id |          title           | done
+----+--------------------------+------
+  1 | Set up the server        | t
+  2 | Build read endpoints     | f
+  3 | Ship to GitHub           | f
+  4 | Compose persistence test | f
+```
+
+Inspect yourself with:
+
+```bash
+docker compose exec db psql -U postgres -d tasks
+```
+
+## Project layout
+* `server.js` — Express routes
+* `db.js` — Postgres repository (connect, create table, seed once)
+* `Dockerfile` — builds the API image
+* `compose.yaml` — starts `api` + `db` together
+* `.env.example` — template for secrets (committed)
+* `.env` — real secrets (git-ignored)
+
+## A2 note (SQLite)
+Earlier stages used SQLite. A screenshot of that table in DB Browser is at [docs/db-browser-screenshot.png](docs/db-browser-screenshot.png). Current storage is Postgres via Compose.
