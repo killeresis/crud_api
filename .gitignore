@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Secrets — never commit real credentials
+.env
+
+# SQLite database — created automatically on first run (A2)
+tasks.db
+*.db
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.log
