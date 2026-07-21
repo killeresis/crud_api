@@ -67,27 +67,17 @@ curl -i http://localhost:3000/tasks
 ```
 
 ## Data in Postgres (`psql`)
-```text
-\dt
-         List of relations
- Schema | Name  | Type  |  Owner
---------+-------+-------+----------
- public | tasks | table | postgres
+Screenshot of `\dt` and `SELECT * FROM tasks;` inside the Compose `db` container:
 
-SELECT * FROM tasks;
- id |          title           | done
-----+--------------------------+------
-  1 | Set up the server        | t
-  2 | Build read endpoints     | f
-  3 | Ship to GitHub           | f
-  4 | Compose persistence test | f
-```
+![Postgres tasks table in psql](docs/postgres-screenshot.png)
 
 Inspect yourself with:
 
 ```bash
 docker compose exec db psql -U postgres -d tasks
 ```
+
+Then run `\dt` and `SELECT * FROM tasks;`.
 
 ## Project layout
 * `server.js` — Express routes
