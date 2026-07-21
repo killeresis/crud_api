@@ -49,9 +49,16 @@ app.get('/tasks/:id', async (req, res) => {
 app.post('/tasks', async (req, res) => {
     try {
         const { title } = req.body;
+
+        // Validate — missing/empty title → 400
+        if (!title || title.trim() === '') {
+            return res.status(400).json({ error: "Title is required and cannot be empty" });
+        }
+
+        // RETURNING * hands back the new row, id included; done defaults to false
         const result = await pool.query(
-            'INSERT INTO tasks (title) VALUES ($1) RETURNING *',
-            [title]
+            'INSERT INTO tasks (title, done) VALUES ($1, $2) RETURNING *',
+            [title, false]
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {
@@ -61,11 +68,30 @@ app.post('/tasks', async (req, res) => {
 // Update an existing task
 app.put('/tasks/:id', async (req, res) => {
     try {
-        const { id } = req.params;
-        const { title, completed } = req.body;
+        const requestedId = parseInt(req.params.id);
+        const { title, done } = req.body;
+
+        // Validate input (same rules as A1/A2)
+        if (Object.keys(req.body).length === 0) {
+            return res.status(400).json({ error: "Request body cannot be empty" });
+        }
+        if (title !== undefined && title.trim() === '') {
+            return res.status(400).json({ error: "Title cannot be empty" });
+        }
+
+        // Load existing row first (for partial updates + 404)
+        const existing = await pool.query('SELECT * FROM tasks WHERE id = $1', [requestedId]);
+        if (existing.rows.length === 0) {
+            return res.status(404).json({ error: "Task not found" });
+        }
+
+        const current = existing.rows[0];
+        const newTitle = title !== undefined ? title : current.title;
+        const newDone = done !== undefined ? done : current.done;
+
         const result = await pool.query(
-            'UPDATE tasks SET title = $1, completed = $2 WHERE id = $3 RETURNING *',
-            [title, completed, id]
+            'UPDATE tasks SET title = $1, done = $2 WHERE id = $3 RETURNING *',
+            [newTitle, newDone, requestedId]
         );
         res.json(result.rows[0]);
     } catch (err) {
@@ -75,8 +101,15 @@ app.put('/tasks/:id', async (req, res) => {
 // Delete a task
 app.delete('/tasks/:id', async (req, res) => {
     try {
-        const { id } = req.params;
-        await pool.query('DELETE FROM tasks WHERE id = $1', [id]);
+        const requestedId = parseInt(req.params.id);
+        const result = await pool.query('DELETE FROM tasks WHERE id = $1', [requestedId]);
+
+        // Unknown id → 404
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: "Task not found" });
+        }
+
+        // 204 No Content — success with an empty body
         res.status(204).send();
     } catch (err) {
         res.status(500).json({ error: err.message });
