@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const { pool, initDb } = require('./db');
 const { supabase } = require('./supabase');
+const { requireAuth, userClientFromToken } = require('./middleware/auth');
 
 const express = require('express');
 const app = express();
@@ -63,44 +64,46 @@ app.post('/auth/login', async (req, res) => {
     }
 });
 
-// Stage 2 — public lobby + locked door (token required, not verified yet)
+// Stage 2 — public lobby
 app.get('/public/info', (req, res) => {
     res.status(200).json({ message: "Welcome stranger! This info is public." });
 });
 
-app.get('/protected/profile', async (req, res) => {
+// Stage 3–4 — protected routes use the shared auth middleware
+app.get('/protected/profile', requireAuth, (req, res) => {
+    // Guard already verified the token and set req.user
+    return res.status(200).json({
+        id: req.user.id,
+        email: req.user.email,
+        created_at: req.user.created_at,
+    });
+});
+
+// Stage 4 checkpoint — second locked door, same middleware, no new auth code
+app.get('/protected/dashboard', requireAuth, (req, res) => {
+    return res.status(200).json({
+        message: "Welcome to your dashboard",
+        email: req.user.email,
+    });
+});
+
+// Stage 4 — logout (protected)
+app.post('/auth/logout', requireAuth, async (req, res) => {
     try {
-        const authHeader = req.headers.authorization;
+        const userClient = userClientFromToken(req.accessToken);
+        const { error } = await userClient.auth.signOut();
 
-        // Must look like: Authorization: Bearer <token>
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({ error: "Access token required" });
+        if (error) {
+            return res.status(401).json({ error: error.message });
         }
 
-        const token = authHeader.slice('Bearer '.length).trim();
-        if (!token) {
-            return res.status(401).json({ error: "Access token required" });
-        }
-
-        // Stage 3 — ask Supabase if this JWT is real
-        const { data, error } = await supabase.auth.getUser(token);
-
-        if (error || !data.user) {
-            return res.status(401).json({ error: "Invalid or expired token" });
-        }
-
-        // Safe metadata only — never send the raw token back
-        return res.status(200).json({
-            id: data.user.id,
-            email: data.user.email,
-            created_at: data.user.created_at,
-        });
+        return res.status(204).send();
     } catch (err) {
         return res.status(500).json({ error: err.message });
     }
 });
 
-//stage 2 — read from Postgres
+// Tasks — read from Postgres
 app.get('/tasks', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM tasks');
