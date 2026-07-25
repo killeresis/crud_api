@@ -68,21 +68,36 @@ app.get('/public/info', (req, res) => {
     res.status(200).json({ message: "Welcome stranger! This info is public." });
 });
 
-app.get('/protected/profile', (req, res) => {
-    const authHeader = req.headers.authorization;
+app.get('/protected/profile', async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
 
-    // Must look like: Authorization: Bearer <token>
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: "Access token required" });
+        // Must look like: Authorization: Bearer <token>
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ error: "Access token required" });
+        }
+
+        const token = authHeader.slice('Bearer '.length).trim();
+        if (!token) {
+            return res.status(401).json({ error: "Access token required" });
+        }
+
+        // Stage 3 — ask Supabase if this JWT is real
+        const { data, error } = await supabase.auth.getUser(token);
+
+        if (error || !data.user) {
+            return res.status(401).json({ error: "Invalid or expired token" });
+        }
+
+        // Safe metadata only — never send the raw token back
+        return res.status(200).json({
+            id: data.user.id,
+            email: data.user.email,
+            created_at: data.user.created_at,
+        });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
     }
-
-    const token = authHeader.slice('Bearer '.length).trim();
-    if (!token) {
-        return res.status(401).json({ error: "Access token required" });
-    }
-
-    // Stage 2: we only check a token was presented — verification comes in Stage 3
-    res.status(200).json({ message: "Token presented (not verified yet)" });
 });
 
 //stage 2 — read from Postgres
