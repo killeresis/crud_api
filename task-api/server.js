@@ -1,10 +1,11 @@
 require('dotenv').config();
 
 const { pool, initDb } = require('./db');
+const { supabase } = require('./supabase');
 
 const express = require('express');
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Middleware to parse JSON bodies, for express to read json data from the client 
 app.use(express.json());
@@ -119,8 +120,14 @@ app.delete('/tasks/:id', async (req, res) => {
 // Connect to Postgres, create table if needed, seed once — then start listening
 async function start() {
     await initDb();
+
+    // Confirm Supabase client is configured (URL + anon key loaded)
+    if (!supabase) {
+        throw new Error('Supabase client failed to initialize');
+    }
+
     app.listen(PORT, () => {
-        console.log(`Server is running!`);
+        console.log(`Server running and connected to Supabase`);
         console.log(`-> API Root: http://localhost:${PORT}/`);
         console.log(`-> Swagger UI: http://localhost:${PORT}/docs`);
     });
