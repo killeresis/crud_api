@@ -17,6 +17,52 @@ app.get('/health', (req, res) => {
     res.json({ status: "ok" });
 });
 
+// Stage 1 — Sign Up & Log In (Supabase Auth)
+app.post('/auth/signup', async (req, res) => {
+    try {
+        const { email, password } = req.body || {};
+
+        if (!email || !password) {
+            return res.status(400).json({ error: "Email and password are required" });
+        }
+
+        const { data, error } = await supabase.auth.signUp({ email, password });
+
+        if (error) {
+            return res.status(400).json({ error: error.message });
+        }
+
+        // 201 Created — return the user object Supabase gives back
+        return res.status(201).json({ user: data.user });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/auth/login', async (req, res) => {
+    try {
+        const { email, password } = req.body || {};
+
+        if (!email || !password) {
+            return res.status(400).json({ error: "Email and password are required" });
+        }
+
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+        if (error) {
+            return res.status(401).json({ error: "Invalid login credentials" });
+        }
+
+        // 200 OK — return the JWT access token and refresh token
+        return res.status(200).json({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+        });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 //stage 2 — read from Postgres
 app.get('/tasks', async (req, res) => {
     try {
