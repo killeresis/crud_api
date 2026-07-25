@@ -36,10 +36,23 @@ Copy `.env.example` → `.env` (`.env` is git-ignored — never commit real secr
 
 | Variable | Example | Notes |
 |---|---|---|
-| `DATABASE_URL` | `postgres://postgres:dev@localhost:5432/tasks` | For running the API **on your machine** against a local Postgres |
-| (Compose) | set in `compose.yaml` as `postgres://postgres:dev@db:5432/tasks` | Inside Docker the host is the service name **`db`**, not `localhost` |
+| `DATABASE_URL` | `postgres://postgres:dev@localhost:5432/tasks` | Local API → local Postgres |
+| `SUPABASE_URL` | `https://YOUR_PROJECT.supabase.co` | From Supabase → Project Settings → API |
+| `SUPABASE_KEY` | `your_anon_key` | Use the **anon / publishable** key only |
+| `PORT` | `3000` | API port |
+| (Compose) | `DATABASE_URL` set in `compose.yaml` as `...@db:5432/tasks` | Inside Docker the host is **`db`**, not `localhost` |
 
-## Endpoints
+## Auth endpoints (A4)
+| Method | Path | Auth? | Description |
+|---|---|---|---|
+| POST | `/auth/signup` | no | Create account → 201 |
+| POST | `/auth/login` | no | Returns `access_token` + `refresh_token` → 200 |
+| POST | `/auth/logout` | Bearer JWT | End session → 204 |
+| GET | `/public/info` | no | Public welcome message → 200 |
+| GET | `/protected/profile` | Bearer JWT | Current user metadata → 200 |
+| GET | `/protected/dashboard` | Bearer JWT | Second protected door (same middleware) → 200 |
+
+## Task endpoints
 | Method | Path | Description | Success |
 |---|---|---|---|
 | GET | `/tasks` | List all tasks | 200 |
@@ -47,6 +60,17 @@ Copy `.env.example` → `.env` (`.env` is git-ignored — never commit real secr
 | POST | `/tasks` | Create a task (`title` required) | 201 / 400 |
 | PUT | `/tasks/:id` | Update `title` and/or `done` | 200 / 400 / 404 |
 | DELETE | `/tasks/:id` | Delete a task | 204 / 404 |
+
+## Swagger UI (Authorize padlock)
+Open http://localhost:3000/docs
+
+1. `POST /auth/login` → copy `access_token`
+2. Click **Authorize** (lock icon) → paste the token → Authorize
+3. Try `GET /protected/profile` — should return **200**
+
+Protected routes (`/protected/*`, `/auth/logout`) show a lock icon in Swagger.
+
+![Swagger UI with bearer auth](docs/swagger-auth-screenshot.png)
 
 ## Example `curl -i`
 ```text
@@ -82,8 +106,10 @@ Then run `\dt` and `SELECT * FROM tasks;`.
 ## Project layout
 * `server.js` — Express routes
 * `db.js` — Postgres repository (connect, create table, seed once)
-* `Dockerfile` — builds the API image
-* `compose.yaml` — starts `api` + `db` together
+* `middleware/auth.js` — reusable JWT guard (`requireAuth`)
+* `supabase.js` — Supabase client
+* `openapi.json` — Swagger spec with bearer auth
+* `Dockerfile` / `compose.yaml` — containerized stack
 * `.env.example` — template for secrets (committed)
 * `.env` — real secrets (git-ignored)
 
